@@ -161,7 +161,7 @@ class SampleNet(nn.Module):
 
         out = proj if self.training else match
 
-        return simp, out
+        return simp, out, match
 
     def sample(self, x):
         simp, proj, match, feat = self.__call__(x)
