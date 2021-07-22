@@ -190,6 +190,59 @@ class SampleNet(nn.Module):
         return sigma
 
 
+class SampleNetDecoder(nn.Module):
+    def __init__(self,
+                 num_sampled_points,
+                 bottleneck_size,
+                 num_reconstracted_points
+                 ):
+        super().__init__()
+        self.num_sampled_points = num_sampled_points
+        self.bottleneck_size = bottleneck_size
+        self.name = "samplenet_decoder"
+
+        self.fc4 = nn.Linear(3 * num_sampled_points, 256)
+        self.fc3 = nn.Linear(256, 256)
+        self.fc2 = nn.Linear(256, 256)
+        self.fc1 = nn.Linear(256, bottleneck_size)
+
+        self.bn_fc4 = nn.BatchNorm1d(256)
+        self.bn_fc3 = nn.BatchNorm1d(256)
+        self.bn_fc2 = nn.BatchNorm1d(256)
+        self.bn_fc1 = nn.BatchNorm1d(bottleneck_size)
+
+        self.t_conv5 = nn.ConvTranspose1d(
+            bottleneck_size, 128, num_reconstracted_points)
+        self.t_conv4 = nn.ConvTranspose1d(128, 64, 1)
+        self.t_conv3 = nn.ConvTranspose1d(64, 64, 1)
+        self.t_conv2 = nn.ConvTranspose1d(64, 64, 1)
+        self.t_conv1 = nn.ConvTranspose1d(64, 3, 1)
+
+        self.bn5 = nn.BatchNorm1d(128)
+        self.bn4 = nn.BatchNorm1d(64)
+        self.bn3 = nn.BatchNorm1d(64)
+        self.bn2 = nn.BatchNorm1d(64)
+
+    def forward(self, y: torch.Tensor):
+        # x shape should be B x 3 x sampled_points_N
+        x = y.view(-1, 3 * self.num_sampled_points)
+
+        x = F.relu(self.bn_fc4(self.fc4(x)))
+        x = F.relu(self.bn_fc3(self.fc3(x)))
+        x = F.relu(self.bn_fc2(self.fc2(x)))
+        x = F.sigmoid(self.bn_fc1(self.fc1(x)))
+
+        x = x.view(-1, self.bottleneck_size, 1)
+
+        x = F.relu(self.bn5(self.t_conv5(x)))
+        x = F.relu(self.bn4(self.t_conv4(x)))
+        x = F.relu(self.bn3(self.t_conv3(x)))
+        x = F.relu(self.bn2(self.t_conv2(x)))
+        x = self.t_conv1(x)
+
+        return x
+
+
 if __name__ == "__main__":
     point_cloud = np.random.randn(1, 3, 1024)
     point_cloud_pl = torch.tensor(point_cloud, dtype=torch.float32).cuda()
