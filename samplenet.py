@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from knn_cuda import KNN
+# from torch.nn.modules.module import Module
 
 try:
     from .soft_projection import SoftProjection
@@ -60,7 +61,8 @@ class SampleNet(nn.Module):
 
         # projection and matching
         self.project = SoftProjection(
-            group_size, initial_temperature, is_temperature_trainable, min_sigma
+            group_size, initial_temperature,
+            is_temperature_trainable, min_sigma
         )
         self.skip_projection = skip_projection
         self.complete_fps = complete_fps
@@ -129,7 +131,8 @@ class SampleNet(nn.Module):
             and should require no gradients.
             """
 
-            # Convert to numpy arrays in B x N x 3 format. we assume 'bcn' format.
+            # Convert to numpy arrays in B x N x 3 format.
+            # we assume 'bcn' format.
             x = x.permute(0, 2, 1).cpu().detach().numpy()
             y = y.permute(0, 2, 1).cpu().detach().numpy()
 
@@ -171,7 +174,8 @@ class SampleNet(nn.Module):
     # At inference time, there are no sampling losses.
     # When evaluating the model, we'd only want to asses the task loss.
 
-    def get_simplification_loss(self, ref_pc, samp_pc, pc_size, gamma=1, delta=0):
+    def get_simplification_loss(self, ref_pc, samp_pc, pc_size,
+                                gamma=1, delta=0):
         if self.skip_projection or not self.training:
             return torch.tensor(0).to(ref_pc)
         # ref_pc and samp_pc are B x N x 3 matrices
@@ -244,8 +248,15 @@ class SampleNetDecoder(nn.Module):
 
 
 if __name__ == "__main__":
+    #
+    # Test Data
+    #
     point_cloud = np.random.randn(1, 3, 1024)
     point_cloud_pl = torch.tensor(point_cloud, dtype=torch.float32).cuda()
+
+    #
+    # SampleNet Encoder
+    #
     net = SampleNet(5, 128, group_size=10,
                     initial_temperature=0.1, complete_fps=True)
 
@@ -270,3 +281,21 @@ if __name__ == "__main__":
     mse_points = np.sum((proj - match) ** 2, axis=1)
     print("projected points vs. matched points error per point:")
     print(mse_points)
+
+    #
+    # SampleNet Decoder
+    #
+    decoder = SampleNetDecoder(num_sampled_points=5,
+                               bottleneck_size=128,
+                               num_reconstracted_points=1024)
+
+    decoder.cuda()
+    decoder.eval()
+    for param in decoder.named_modules():
+        print(param)
+
+    match = torch.tensor(match, dtype=torch.float32).cuda()
+    unsampled = decoder.forward(match)
+    unsampled = unsampled.detach().cpu().numpy()
+    print("*** UNSAMPLED POINTS ***")
+    print(unsampled)
