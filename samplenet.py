@@ -234,7 +234,7 @@ class SampleNetDecoder(nn.Module):
         x = F.relu(self.bn_fc4(self.fc4(x)))
         x = F.relu(self.bn_fc3(self.fc3(x)))
         x = F.relu(self.bn_fc2(self.fc2(x)))
-        x = F.sigmoid(self.bn_fc1(self.fc1(x)))
+        x = torch.sigmoid(self.bn_fc1(self.fc1(x)))
 
         x = x.view(-1, self.bottleneck_size, 1)
 
@@ -245,6 +245,18 @@ class SampleNetDecoder(nn.Module):
         x = self.t_conv1(x)
 
         return x
+
+    def get_reconstruction_loss(self, ref_pc, pred_pc):
+        """reconstruction loss used Chamfer Distance
+
+        TODO:
+            add 'emd'
+        """
+        cost_p1_p2, cost_p2_p1 = ChamferDistance()(pred_pc, ref_pc)
+        cost_p1_p2 = torch.mean(cost_p1_p2)
+        cost_p2_p1 = torch.mean(cost_p2_p1)
+        loss = cost_p1_p2 + cost_p2_p1
+        return loss
 
 
 if __name__ == "__main__":
