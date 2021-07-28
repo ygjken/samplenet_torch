@@ -7,6 +7,8 @@ from torch.utils import data
 from torch import optim
 import torch
 
+SAMPLED_SIZE = 256
+
 # data
 modelnet40 = ModelNetCls(
     num_points=1024,
@@ -18,17 +20,17 @@ train_loader = data.DataLoader(modelnet40, batch_size=32, shuffle=True)
 
 # models
 encoder = SampleNet(
-    num_out_points=64,
+    num_out_points=SAMPLED_SIZE,
     bottleneck_size=128,
     group_size=10,
     initial_temperature=0.1,
     complete_fps=True,
     input_shape="bnc",
-    skip_projection=False
+    skip_projection=True
 )
 
 decoder = SampleNetDecoder(
-    num_sampled_points=64,
+    num_sampled_points=SAMPLED_SIZE,
     bottleneck_size=128,
     num_reconstracted_points=1028,
 )
@@ -50,7 +52,7 @@ alpha = 0.01
 lmbda = 0.01
 
 
-for epoch in range(2):
+for epoch in range(1000):
     for pc in train_loader:
         pc_pl = pc[0].clone().detach().cuda()
 
