@@ -5,7 +5,7 @@ import os
 import json
 import torch
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(os.getcwd())
 
 
 def _get_data_files(list_filename):
@@ -27,7 +27,7 @@ class ModelNetCls(data.Dataset):
         transforms,
         train,
         cinfo=None,
-        folder="modelnet40_ply_hdf5_2048",
+        folder="data/modelnet40_ply_hdf5_2048",
         include_shapes=False,
     ):
         super().__init__()
@@ -45,7 +45,8 @@ class ModelNetCls(data.Dataset):
 
         point_list, label_list = [], []
         for f in self.files:
-            points, labels = _load_data_file(os.path.join(BASE_DIR, f))
+            points, labels = _load_data_file(
+                os.path.join(self.data_dir, os.path.basename(f)))
             point_list.append(points)
             label_list.append(labels)
 

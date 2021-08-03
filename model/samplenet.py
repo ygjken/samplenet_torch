@@ -10,14 +10,14 @@ from knn_cuda import KNN
 # from torch.nn.modules.module import Module
 
 try:
-    from .soft_projection import SoftProjection
-    from .chamfer_distance import ChamferDistance
-    from . import sputils
+    from sampler.model.soft_projection import SoftProjection
+    from sampler.chamfer_distance.chamfer_distance import ChamferDistance
+    from sampler.utils import sputils
 except (ModuleNotFoundError, ImportError) as err:
     print(err.__repr__())
-    from soft_projection import SoftProjection
-    from chamfer_distance import ChamferDistance
-    import sputils
+    from model.soft_projection import SoftProjection
+    from chamfer_distance.chamfer_distance import ChamferDistance
+    from utils import sputils
 
 
 class SampleNet(nn.Module):
@@ -204,6 +204,7 @@ class SampleNetDecoder(nn.Module):
         self.num_sampled_points = num_sampled_points
         self.bottleneck_size = bottleneck_size
         self.name = "samplenet_decoder"
+        self.num_reconstracted_points = num_reconstracted_points
 
         self.fc4 = nn.Linear(3 * num_sampled_points, 256)
         self.fc3 = nn.Linear(256, 256)
@@ -243,6 +244,7 @@ class SampleNetDecoder(nn.Module):
         x = F.relu(self.bn3(self.t_conv3(x)))
         x = F.relu(self.bn2(self.t_conv2(x)))
         x = self.t_conv1(x)
+        x = x.view(-1, self.num_reconstracted_points, 3)
 
         return x
 
