@@ -1,6 +1,6 @@
 import torch
-import numpy as np
-from utils.convertor import xyz2pcd
+import open3d as o3d
+from utils.convertor import xyz2pcd, get_color
 
 from model.samplenet import SampleNet, SampleNetDecoder
 from utils.dataloader import ModelNetCls
@@ -37,13 +37,31 @@ upsampler.eval()
 downsampler.load_state_dict(torch.load('weight/encoder.pt'))
 
 # forward propagation
-pc_pl = torch.from_numpy(modelnet40_train[0][0])
-print('Points:', modelnet40_train[0][0].shape)
+pc_pl = torch.from_numpy(modelnet40_train[10][0])
+print('Points:', modelnet40_train[10][0].shape)
 
 pc_pl = torch.unsqueeze(pc_pl, 0).clone().detach().cuda()
 simp_pc, proj_pc, _ = downsampler(pc_pl)
 print('simp_pc', simp_pc.shape)
 print('proj_pc', proj_pc.shape)
 
-simp_pc = xyz2pcd(simp_pc[0])
-print(simp_pc)
+reconst_pc = upsampler(proj_pc)
+print('reconst_pc', reconst_pc.shape)
+
+
+# save as ply files
+cloud_unsampled = xyz2pcd(pc_pl, 'bnc', batched=True)
+cloud_unsampled.paint_uniform_color(get_color('blue'))
+o3d.io.write_point_cloud('log/pc_out/cloud_unsampled.ply', cloud_unsampled)
+
+cloud_sampled = xyz2pcd(simp_pc, 'bcn', batched=True)
+cloud_sampled.paint_uniform_color(get_color('blue'))
+o3d.io.write_point_cloud('log/pc_out/cloud_sampled.ply', cloud_sampled)
+
+cloud_softproj = xyz2pcd(proj_pc, 'bcn', batched=True)
+cloud_softproj.paint_uniform_color(get_color('blue'))
+o3d.io.write_point_cloud('log/pc_out/cloud_softproj.ply', cloud_softproj)
+
+cloud_reconst = xyz2pcd(reconst_pc, 'bnc', batched=True)
+cloud_reconst.paint_uniform_color(get_color('blue'))
+o3d.io.write_point_cloud('log/pc_out/cloud_reconst.ply', cloud_reconst)
