@@ -84,10 +84,15 @@ for epoch in range(300):
                 pred = upsampler(proj_pc)
 
                 # Compute losses
+                pc_pl = pc_pl.permute(0, 2, 1)
+                simp_pc = simp_pc.permute(0, 2, 1)
                 simplification_loss = downsampler.get_simplification_loss(
                     pc_pl, simp_pc, SAMPLED_SIZE
                 )
                 projection_loss = downsampler.get_projection_loss()
+
+                pc_pl = pc_pl.permute(0, 2, 1)
+                simp_pc = simp_pc.permute(0, 2, 1)
                 reconstrution_loss = upsampler.get_reconstruction_loss(
                     pc_pl, pred)
 
