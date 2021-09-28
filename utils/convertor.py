@@ -1,7 +1,10 @@
 import open3d as o3d
 
 
-def xyz2pcd(xyz, input_shape='bcn', color='blue'):
+def xyz2pcd(xyz, input_shape, color='blue', batched=False):
+    if batched:
+        xyz = xyz[0]
+
     if input_shape == 'bcn':
         xyz = xyz.permute(1, 0)
 
