@@ -206,10 +206,10 @@ class SampleNetDecoder(nn.Module):
         self.name = "samplenet_decoder"
         self.num_reconstracted_points = num_reconstracted_points
 
-        self.fc4 = nn.Linear(3 * num_sampled_points, 256)
-        self.fc3 = nn.Linear(256, 256)
-        self.fc2 = nn.Linear(256, 256)
-        self.fc1 = nn.Linear(256, bottleneck_size)
+        self.fc4 = torch.nn.Conv1d(3, 256, 1)
+        self.fc3 = torch.nn.Conv1d(256, 256, 1)
+        self.fc2 = torch.nn.Conv1d(256, 256, 1)
+        self.fc1 = torch.nn.Conv1d(256, bottleneck_size, 1)
 
         self.bn_fc4 = nn.BatchNorm1d(256)
         self.bn_fc3 = nn.BatchNorm1d(256)
@@ -217,11 +217,12 @@ class SampleNetDecoder(nn.Module):
         self.bn_fc1 = nn.BatchNorm1d(bottleneck_size)
 
         self.t_conv5 = nn.ConvTranspose1d(
-            bottleneck_size, 128, num_reconstracted_points)
-        self.t_conv4 = nn.ConvTranspose1d(128, 64, 1)
-        self.t_conv3 = nn.ConvTranspose1d(64, 64, 1)
-        self.t_conv2 = nn.ConvTranspose1d(64, 64, 1)
-        self.t_conv1 = nn.ConvTranspose1d(64, 3, 1)
+            bottleneck_size, 128, kernel_size=num_reconstracted_points)
+
+        self.t_conv4 = nn.Linear(128, 64)
+        self.t_conv3 = nn.Linear(64, 64)
+        self.t_conv2 = nn.Linear(64, 64)
+        self.t_conv1 = nn.Linear(64, 3)
 
         self.bn5 = nn.BatchNorm1d(128)
         self.bn4 = nn.BatchNorm1d(64)
@@ -230,16 +231,18 @@ class SampleNetDecoder(nn.Module):
 
     def forward(self, y: torch.Tensor):
         # x shape should be B x 3 x sampled_points_N
-        x = y.view(-1, 3 * self.num_sampled_points)
+        x = y
 
+        print(x.shape)
         x = F.relu(self.bn_fc4(self.fc4(x)))
         x = F.relu(self.bn_fc3(self.fc3(x)))
         x = F.relu(self.bn_fc2(self.fc2(x)))
         x = torch.sigmoid(self.bn_fc1(self.fc1(x)))
-
-        x = x.view(-1, self.bottleneck_size, 1)
-
+        print(x.shape)
+        x = torch.max(x, 2)[0]  # Batch x 128
+        print(x.shape)
         x = F.relu(self.bn5(self.t_conv5(x)))
+
         x = F.relu(self.bn4(self.t_conv4(x)))
         x = F.relu(self.bn3(self.t_conv3(x)))
         x = F.relu(self.bn2(self.t_conv2(x)))
@@ -255,9 +258,11 @@ class SampleNetDecoder(nn.Module):
             add 'emd'
         """
         cost_p1_p2, cost_p2_p1 = ChamferDistance()(pred_pc, ref_pc)
+        max_cost = torch.max(cost_p1_p2, dim=1)[0]  # furthest point
+        max_cost = torch.mean(max_cost)
         cost_p1_p2 = torch.mean(cost_p1_p2)
         cost_p2_p1 = torch.mean(cost_p2_p1)
-        loss = cost_p1_p2 + cost_p2_p1
+        loss = cost_p1_p2 + max_cost + cost_p2_p1
         return loss
 
 
