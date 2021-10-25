@@ -6,6 +6,7 @@ import sys
 import numpy as np
 import torch
 import torchvision
+import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 from data.modelnet_loader_torch import ModelNetCls
@@ -246,6 +247,11 @@ class Action:
         self.TRAIN_PCRNET = args.train_pcrnet
         self.NUM_SAMPLED_CLOUDS = args.num_sampled_clouds
 
+        # 推定結果を保存するための変数
+        self.p0s = []
+        self.p1s = []
+        self.p1_ests = []
+
     def create_model(self):
         # Create Task network and load pretrained feature weights if requested
         pcrnet_model = pcrnet.PCRNet(input_shape="bnc")
@@ -469,10 +475,14 @@ class Action:
             precision = np.sum(rotation_errors <= err) / n_samples
             y[idx] = precision
 
-        # plt.figure()
-        # plt.plot(x, y)
-        # plt.show()
-        # plt.savefig("test.png")
+        # DEBUG: View
+        plt.figure()
+        plt.plot(x, y)
+        plt.show()
+        plt.savefig("log/estimated_pc_result/test.png")
+
+        # DEBUG: pc save
+        self.save_estimated_pc()
 
         auc = np.sum(y) / len(x)
         print(f"Experiment name: {self.experiment_name}")
@@ -555,6 +565,24 @@ class Action:
         return consistency
 
     def compute_pcrnet_loss(self, model, data, device, epoch):
+        """PCRNetのLossを計算する
+
+        Args:
+            model ([type]): [description]
+            data ([type]): [description]
+            device ([type]): [description]
+            epoch ([type]): [description]
+
+        Returns:
+            [type]: [description]
+
+        Var:
+            p0: source
+            p1: target
+            igt: grand truth
+            twist: 推定結果、クォータニオン4変数、並進行列3変数
+            p1_est: 推定結果を適応したp0
+        """
         p0, p1, igt = data
         p0 = p0.to(device)  # template
         p1 = p1.to(device)  # source
@@ -569,6 +597,11 @@ class Action:
         gt_transform = QuaternionTransform.from_dict(igt, device)
 
         p1_est = est_transform.rotate(p0)
+
+        # 推定結果を記録する
+        self.p0s.append(p0)
+        self.p1s.append(p1)
+        self.p1_ests.append(p1_est)
 
         cost_p0_p1, cost_p1_p0 = ChamferDistance()(p1, p1_est)
         cost_p0_p1 = torch.mean(cost_p0_p1)
@@ -596,6 +629,15 @@ class Action:
         }
 
         return pcrnet_loss, pcrnet_loss_info
+
+    def save_estimated_pc(self):
+        p0s = torch.stack(self.p0s)
+        p1s = torch.stack(self.p1s)
+        p1_ests = torch.stack(self.p1_ests)
+
+        torch.save(p0s, "log/estimated_pc_result/p0s.pt")
+        torch.save(p1s, "log/estimated_pc_result/p1s.pt")
+        torch.save(p1_ests, "log/estimated_pc_result/p1_ests.pt")
 
 
 def get_datasets(args):
