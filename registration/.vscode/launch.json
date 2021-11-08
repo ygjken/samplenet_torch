@@ -5,7 +5,14 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: SampleNet main",
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python: Test SampleNet main(PCRNet only)",
             "type": "python",
             "request": "launch",
             "program": "${file}",
@@ -13,14 +20,35 @@
             "args": [
                 "-o",
                 "log/baseline/PCRNet1024",
+                "--transfer-from",
+                "log/baseline/PCRNet1024_model_best.pth",
                 "--datafolder",
                 "car_hdf5_2048",
                 "--sampler",
                 "none",
-                "--train-pcrnet",
+                "--test",
                 "--epochs",
-                "500",
+                "500"
             ],
         },
+        {
+            "name": "Python: train PCRNet for Protein",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "-o",
+                "log/for_protein/PCRNet1024",
+                "--datafolder",
+                "data/protein",
+                "--sampler",
+                "none",
+                "--train-pcrnet",
+                "--epochs",
+                "100",
+                "--protein"
+            ],
+        }
     ]
 }

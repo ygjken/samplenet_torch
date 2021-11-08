@@ -16,14 +16,21 @@ from src import sputils
 from src.pctransforms import OnUnitCube, PointcloudToTensor
 from src.qdataset import QuaternionFixedDataset, QuaternionTransform, rad_to_deg
 
+# for protein
+from src.qdataset_for_two import QuaternionFixedTwoDataset
+from src.protein_dataset import DudEDataset
+from torch.utils.tensorboard import SummaryWriter
+
+
 torch.manual_seed(0)
+WRITER = SummaryWriter()
 
 # addpath('../')
 # sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
 
-LOGGER = logging.getLogger(__name__)
-LOGGER.addHandler(logging.NullHandler())
-LOGGER.addHandler(logging.StreamHandler(sys.stdout))
+# LOGGER = logging.getLogger(__name__)
+# LOGGER.addHandler(logging.NullHandler())
+# LOGGER.addHandler(logging.StreamHandler(sys.stdout))
 
 # dump to GLOBALS dictionary
 GLOBALS = None
@@ -88,6 +95,9 @@ def options(argv=None, parser=None):
                         metavar='PATH', help='path to pretrained model file (default: null (no-use))')
     parser.add_argument('--device', default='cuda:0', type=str,
                         metavar='DEVICE', help='use CUDA if available')
+
+    # for protein option
+    parser.add_argument('--protein', action='store_true')
 
     args = parser.parse_args(argv)
     return args
@@ -176,7 +186,7 @@ def train(args, trainset, testset, action):
         optimizer.load_state_dict(checkpoint["optimizer"])
 
     # training
-    LOGGER.debug("train, begin")
+    # LOGGER.debug("train, begin")
     for epoch in range(args.start_epoch, args.epochs):
         train_loss, train_rotation_error = action.train_1(
             model, trainloader, optimizer, args.device, epoch
@@ -190,14 +200,18 @@ def train(args, trainset, testset, action):
         is_best = val_loss < min_loss
         min_loss = min(val_loss, min_loss)
 
-        LOGGER.info(
-            "epoch, %04d, train_loss=%f, train_rotation_error=%f, val_loss=%f, val_rotation_error=%f",
-            epoch + 1,
-            train_loss,
-            train_rotation_error,
-            val_loss,
-            val_rotation_error,
-        )
+        # LOGGER.info(
+        #     "epoch, %04d, train_loss=%f, train_rotation_error=%f, val_loss=%f, val_rotation_error=%f",
+        #     epoch + 1,
+        #     train_loss,
+        #     train_rotation_error,
+        #     val_loss,
+        #     val_rotation_error,
+        # )
+        WRITER.add_scalar('train_loss', train_loss, epoch + 1)
+        WRITER.add_scalar('train_rotation_error', train_rotation_error, epoch + 1)
+        WRITER.add_scalar('val_loss', val_loss, epoch + 1)
+        WRITER.add_scalar('val_rotation_error', val_rotation_error, epoch + 1)
 
         snap = {
             "epoch": epoch + 1,
@@ -212,7 +226,7 @@ def train(args, trainset, testset, action):
         save_checkpoint(snap, args.outfile, "snap_last")
         save_checkpoint(model.state_dict(), args.outfile, "model_last")
 
-    LOGGER.debug("train, end")
+    # LOGGER.debug("train, end")
 
 
 def save_checkpoint(state, filename, suffix):
@@ -307,7 +321,7 @@ class Action:
     def try_transfer(model, path):
         if path is not None:
             model.load_state_dict(torch.load(path, map_location="cpu"))
-            LOGGER.info(f"Model loaded from {path}")
+            # LOGGER.info(f"Model loaded from {path}")
 
     def train_1(self, model, trainloader, optimizer, device, epoch):
         vloss = 0.0
@@ -643,38 +657,66 @@ class Action:
 def get_datasets(args):
     transforms = torchvision.transforms.Compose([PointcloudToTensor(), OnUnitCube()])
 
-    if not args.test:
-        traindata = ModelNetCls(
-            args.num_in_points,
-            transforms=transforms,
-            train=True,
-            download=False,
-            folder=args.datafolder,
-        )
-        testdata = ModelNetCls(
-            args.num_in_points,
-            transforms=transforms,
-            train=False,
-            download=False,
-            folder=args.datafolder,
-        )
+    if args.protein:
+        if not args.test:
+            # TODO: trainとtestで違うものを持ってこれるようにする
+            traindata = DudEDataset(
+                json_path=os.path.join(args.datafolder, 'dud.json'),
+                ply_path=os.path.join(args.datafolder, 'ply'),
+                transforms=transforms
+            )
+            testdata = DudEDataset(
+                json_path=os.path.join(args.datafolder, 'dud.json'),
+                ply_path=os.path.join(args.datafolder, 'ply'),
+                transforms=transforms
+            )
 
-        train_repeats = max(int(5000 / len(traindata)), 1)
+            train_repeats = max(int(5000 / len(traindata)), 1)
 
-        trainset = QuaternionFixedDataset(traindata, repeat=train_repeats, seed=0,)
-        testset = QuaternionFixedDataset(testdata, repeat=1, seed=0)
+            trainset = QuaternionFixedTwoDataset(traindata, repeat=train_repeats, seed=0,)
+            testset = QuaternionFixedTwoDataset(testdata, repeat=1, seed=0)
+        else:
+            testdata = DudEDataset(
+                json_path=os.path.join(args.datafolder, 'dud.json'),
+                ply_path=os.path.join(args.datafolder, 'ply'),
+                transforms=transforms
+            )
+            trainset = None
+            testset = QuaternionFixedTwoDataset(testdata, repeat=5, seed=1)
+
     else:
-        testdata = ModelNetCls(
-            args.num_in_points,
-            transforms=transforms,
-            train=False,
-            download=False,
-            cinfo=None,
-            folder=args.datafolder,
-            include_shapes=True,
-        )
-        trainset = None
-        testset = QuaternionFixedDataset(testdata, repeat=5, seed=1)
+        if not args.test:
+            traindata = ModelNetCls(
+                args.num_in_points,
+                transforms=transforms,
+                train=True,
+                download=False,
+                folder=args.datafolder,
+            )
+            testdata = ModelNetCls(
+                args.num_in_points,
+                transforms=transforms,
+                train=False,
+                download=False,
+                folder=args.datafolder,
+            )
+
+            train_repeats = max(int(5000 / len(traindata)), 1)
+
+            trainset = QuaternionFixedDataset(traindata, repeat=train_repeats, seed=0,)
+            testset = QuaternionFixedDataset(testdata, repeat=1, seed=0)
+        else:
+            testdata = ModelNetCls(
+                args.num_in_points,
+                transforms=transforms,
+                train=False,
+                download=False,
+                cinfo=None,
+                folder=args.datafolder,
+                include_shapes=True,
+            )
+            trainset = None
+            testset = QuaternionFixedDataset(testdata, repeat=5, seed=1)
 
     return trainset, testset
 
@@ -682,12 +724,4 @@ def get_datasets(args):
 if __name__ == "__main__":
     ARGS = options(parser=sputils.get_parser())
 
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format="%(levelname)s:%(name)s, %(asctime)s, %(message)s",
-        filename=f"{ARGS.outfile}.log",
-    )
-    LOGGER.debug("Training (PID=%d), %s", os.getpid(), ARGS)
-
     _ = main(ARGS)
-    LOGGER.debug("done (PID=%d)", os.getpid())

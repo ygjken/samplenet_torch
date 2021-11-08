@@ -10,8 +10,10 @@ class DudEDataset(Dataset):
     """Torch向けDUD-Eデータセット
     """
 
-    def __init__(self, json_path, ply_path) -> None:
+    def __init__(self, json_path, ply_path, transforms) -> None:
         super().__init__()
+        self.transforms = transforms
+
         json_file = open(json_path, 'r')
         self.name_sets = json.load(json_file)
         self.prefix = ply_path
@@ -27,5 +29,11 @@ class DudEDataset(Dataset):
         # len_min = min(pocket_len, ligand_len)
         pocket = pocket.random_down_sample(1024.1 / pocket_len)  # 全ての点群の点数を1024に統一する
         ligand = ligand.random_down_sample(1024.1 / ligand_len)
+        pocket = np.asarray(pocket.points)
+        ligand = np.asarray(ligand.points)
 
-        return np.asarray(ligand.points), np.asarray(pocket.points)
+        if self.transforms is not None:
+            pocket = self.transforms(pocket)
+            ligand = self.transforms(ligand)
+
+        return ligand, pocket
