@@ -21,3 +21,11 @@ python main.py \
     --epochs 400 \
 
 wait
+
+# test PCR-Net
+python main.py \
+    -o log \
+    --datafolder car_hdf5_2048 \
+    --sampler none \
+    --test \
+    --transfer-from log/baseline/PCRNet1024_model_best.pth
