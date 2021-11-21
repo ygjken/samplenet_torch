@@ -29,12 +29,18 @@ dataset = ModelNetCls(
 dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
 
 ligand = torch.unsqueeze(dataset[0][0], 0)
-pocket = torch.unsqueeze(dataset[39][0], 0)
+pocket = torch.unsqueeze(dataset[1][0], 0)
 
+# 一回目の回転
 twist, _ = model(ligand, pocket)
-
 est_transform = QuaternionTransform(twist)
 ligand_est = est_transform.rotate(ligand)
+
+# 2回目の回転
+for _ in range(4):
+    twist, _ = model(ligand_est, pocket)
+    est_transform = QuaternionTransform(twist)
+    ligand_est = est_transform.rotate(ligand_est)
 
 source = tensor2pc(ligand[0])
 target = tensor2pc(pocket[0])
