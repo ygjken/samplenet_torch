@@ -15,7 +15,7 @@ class DudEDataset(Dataset):
         self.transforms = transforms
 
         self.include_shape = include_shape
-        self.shape = []
+        self.shapes = []
 
         json_file = open(json_path, 'r')
         self.name_sets = json.load(json_file)
@@ -40,14 +40,14 @@ class DudEDataset(Dataset):
             self.pocket_list.append(pocket)
             self.target_list.append(ligand)
 
-            self.shape.append(len(ligand))
+            self.shapes.append(self.name_sets[i]["target"] + '_' + self.name_sets[i]["ligand"])
 
     def __len__(self):
         return len(self.name_sets)
 
     def __getitem__(self, idx):
-        if not self.include_shape:
-            return self.target_list[idx], self.pocket_list[idx], self.shape[idx]
+        if self.include_shape:
+            return self.target_list[idx], self.pocket_list[idx], self.shapes[idx]
         return self.target_list[idx], self.pocket_list[idx]
 
 

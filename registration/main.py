@@ -671,7 +671,7 @@ def get_protein_datasets(args):
         )
         train_repeats = max(int(5000 / len(traindata)), 1)
 
-        trainset = QuaternionFixedTwoDataset(traindata, repeat=train_repeats, seed=0,)
+        trainset = QuaternionFixedTwoDataset(traindata, repeat=train_repeats, seed=0)
         testset = QuaternionFixedTwoDataset(testdata, repeat=1, seed=0)
     else:
         testdata = DudEDataset(
@@ -681,7 +681,7 @@ def get_protein_datasets(args):
             include_shape=True
         )
         trainset = None
-        testset = QuaternionFixedTwoDataset(testdata, repeat=5, seed=1)
+        testset = QuaternionFixedTwoDataset(testdata, repeat=5, seed=1, include_shapes=True)
 
     return trainset, testset
 
