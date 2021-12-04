@@ -2,6 +2,7 @@ import open3d as o3d
 import numpy as np
 import os
 import json
+import torch
 
 from torch.utils.data import Dataset
 
@@ -22,7 +23,7 @@ class DudEDataset(Dataset):
         self.prefix = ply_path
 
         self.pocket_list = []
-        self.target_list = []
+        self.ligand_list = []
         for i in range(len(self.name_sets)):
             pocket = o3d.io.read_point_cloud(os.path.join(self.prefix, self.name_sets[i]["target"]) + '.ply')
             ligand = o3d.io.read_point_cloud(os.path.join(self.prefix, self.name_sets[i]["ligand"]) + '.ply')
@@ -36,9 +37,12 @@ class DudEDataset(Dataset):
             if self.transforms is not None:
                 pocket = self.transforms(pocket)
                 ligand = self.transforms(ligand)
+            else:
+                pocket = torch.from_numpy(pocket.astype(np.float32)).clone()
+                ligand = torch.from_numpy(ligand.astype(np.float32)).clone()
 
             self.pocket_list.append(pocket)
-            self.target_list.append(ligand)
+            self.ligand_list.append(ligand)
 
             self.shapes.append(self.name_sets[i]["target"] + '_' + self.name_sets[i]["ligand"])
 
@@ -47,8 +51,8 @@ class DudEDataset(Dataset):
 
     def __getitem__(self, idx):
         if self.include_shape:
-            return self.target_list[idx], self.pocket_list[idx], self.shapes[idx]
-        return self.target_list[idx], self.pocket_list[idx]
+            return self.ligand_list[idx], self.pocket_list[idx], self.shapes[idx]
+        return self.ligand_list[idx], self.pocket_list[idx]
 
 
 if __name__ == '__main__':

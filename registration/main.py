@@ -433,6 +433,7 @@ class Action:
     def test_1(self, model, testloader, device, epoch):
         rotation_errors = []
         trans_errs = []
+        norm_errs = []
         consistency_errors = []
 
         with torch.no_grad():
@@ -462,9 +463,11 @@ class Action:
 
                 rotation_error = pcrnet_loss_info["rot_err"]
                 trans_err = pcrnet_loss_info["trans_err"]
+                norm_err = pcrnet_loss_info["norm_err"]
 
                 rotation_errors.append(rotation_error.item())
                 trans_errs.append(trans_err.item())
+                norm_errs.append(norm_err.item())
 
                 if GLOBALS is not None:
                     append_to_GLOBALS("data", data)
@@ -496,6 +499,8 @@ class Action:
         print(f"AUC = {auc}")
         print(f"Mean rotation Error = {np.mean(rotation_errors)}")
         print(f"STD rotation Error = {np.std(rotation_errors)}")
+        print(f"Mean trans Error = {np.std(trans_errs)}")
+        print(f"Mean norm Error = {np.std(norm_errs)}")
         print(f"Mean consistency Error = {np.mean(consistency_errors)}")
         print(f"STD consistency Error = {np.std(consistency_errors)}")
 
