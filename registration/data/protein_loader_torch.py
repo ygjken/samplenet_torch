@@ -11,9 +11,9 @@ class DudEDataset(Dataset):
     """Torch向けDUD-Eデータセット
     """
 
-    def __init__(self, json_path, ply_path, transforms, include_shape=False) -> None:
+    def __init__(self, json_path, ply_path, does_transforms=True, include_shape=False) -> None:
         super().__init__()
-        self.transforms = transforms
+        self.does_transforms = does_transforms
 
         self.include_shape = include_shape
         self.shapes = []
@@ -34,10 +34,9 @@ class DudEDataset(Dataset):
             pocket = np.asarray(pocket.points)
             ligand = np.asarray(ligand.points)
 
-            if self.transforms is not None:
-                pocket = self.transforms(pocket)
-                ligand = self.transforms(ligand)
-            else:
+            if self.does_transforms:
+                ligand, pocket = self.transforms(ligand, pocket)
+            elif not self.does_transforms:
                 pocket = torch.from_numpy(pocket.astype(np.float32)).clone()
                 ligand = torch.from_numpy(ligand.astype(np.float32)).clone()
 
@@ -53,6 +52,25 @@ class DudEDataset(Dataset):
         if self.include_shape:
             return self.ligand_list[idx], self.pocket_list[idx], self.shapes[idx]
         return self.ligand_list[idx], self.pocket_list[idx]
+
+    def transforms(self, src, tgt):
+        src, tgt = self.__pointcloud_to_tensor(src, tgt)
+        src, tgt = self.__on_unit_cube_for_two(src, tgt)
+        return src, tgt
+
+    def __pointcloud_to_tensor(self, src, tgt):
+        return torch.from_numpy(src).float(), torch.from_numpy(tgt).float()
+
+    def __on_unit_cube_for_two(self, source, target):
+        all_points = torch.cat((source, target), 0)
+
+        c = torch.max(all_points, dim=0)[0] - torch.min(all_points, dim=0)[0]
+        s = torch.max(c)
+
+        src = source / s
+        tgt = target / s
+
+        return src - src.mean(dim=0, keepdim=True), tgt - tgt.mean(dim=0, keepdim=True)
 
 
 if __name__ == '__main__':
