@@ -27,7 +27,7 @@ from src.qdataset_for_two import QuaternionFixedTwoDataset
 class PCRNetLightning(LightningModule):
     def __init__(self, bottleneck_size=1024, input_shape="bcn") -> None:
         super().__init__()
-        self.model = PCRNet(bottleneck_size, input_shape)  # TODO: bncで入れてる
+        self.model = PCRNet(bottleneck_size, input_shape)
         self.loss_func = self.compute_loss
 
     def compute_loss(self, p0, p1, igt, twist, pre_normalized_quat):
@@ -47,11 +47,8 @@ class PCRNetLightning(LightningModule):
 
         rot_err, norm_err, trans_err = est_transform.compute_errors(gt_transform)
 
-        # if self.LOSS_TYPE == 0:
         pcrnet_loss = 1.0 * norm_err + 1.0 * chamfer_loss
-
-        # elif self.LOSS_TYPE == 1:
-        #     pcrnet_loss = chamfer_loss
+        # pcrnet_loss = chamfer_loss
 
         rot_err = rad_to_deg(rot_err)
 
@@ -87,25 +84,29 @@ class PCRNetLightning(LightningModule):
         twist, pre_normalized_quat = self(p0, p1)
         loss, loss_info = self.loss_func(p0, p1, igt, twist, pre_normalized_quat)
 
-        # train_logs = {
-        #     f"val/{key}": val for key, val in loss_info.items()
-        # }
-        # self.log_dict(train_logs, on_step=False, on_epoch=True)
-        # self.log("val/total_loss", loss, on_step=False, on_epoch=True)
-
         return {"loss": loss, "loss_info": loss_info}
 
     def validation_epoch_end(self, outputs):
         avg_loss = torch.stack([x["loss"] for x in outputs]).mean()
-        #  TODO: loss info も追加する
-        self.log("val/total_loss", avg_loss, on_step=False, on_epoch=True)
+        self.log("valid/total_loss", avg_loss, on_step=False, on_epoch=True)
+
+        # TODO: loss info も追加する
+        avg_loss_info = {
+            "chamfer_loss": torch.stack([x["loss_info"]["chamfer_loss"] for x in outputs]).mean(),
+            "qnorm_loss": torch.stack([x["loss_info"]["qnorm_loss"] for x in outputs]).mean(),
+            "rot_err": torch.stack([x["loss_info"]["rot_err"] for x in outputs]).mean(),
+            "norm_err": torch.stack([x["loss_info"]["norm_err"] for x in outputs]).mean(),
+            "trans_err": torch.stack([x["loss_info"]["trans_err"] for x in outputs]).mean()
+        }
+        for val, key in avg_loss_info.items():
+            self.log(f"valid/{val}", key, on_step=False, on_epoch=True)
 
     def configure_optimizers(self):
         learnable_params = filter(lambda p: p.requires_grad, self.model.parameters())
         return torch.optim.Adam(learnable_params, lr=1e-3)
 
 
-class DatasetLightning(LightningDataModule):
+class DudEDatasetLightning(LightningDataModule):
     def __init__(self, batch_size=32):
         super().__init__()
         self.batch_size = batch_size
@@ -138,17 +139,56 @@ class DatasetLightning(LightningDataModule):
             shuffle=False)
 
 
+class ModelNetDatasetLightning(LightningDataModule):
+    def __init__(self, batch_size=32):
+        super().__init__()
+        self.batch_size = batch_size
+
+        transforms = torchvision.transforms.Compose([PointcloudToTensor(), OnUnitCube()])
+        traindata = ModelNetCls(
+            1024,
+            transforms=transforms,
+            train=True,
+            download=False,
+            folder="modelnet40_ply_hdf5_2048",
+        )
+        testdata = ModelNetCls(
+            1024,
+            transforms=transforms,
+            train=False,
+            download=False,
+            folder="modelnet40_ply_hdf5_2048",
+        )
+
+        train_repeats = max(int(5000 / len(traindata)), 1)
+
+        self.trainset = QuaternionFixedDataset(traindata, repeat=train_repeats, seed=0,)
+        self.testset = QuaternionFixedDataset(testdata, repeat=1, seed=0)
+
+    def train_dataloader(self):
+        return torch.utils.data.DataLoader(
+            self.trainset,
+            batch_size=self.batch_size,
+            shuffle=True)
+
+    def val_dataloader(self):
+        return torch.utils.data.DataLoader(
+            self.testset,
+            batch_size=self.batch_size,
+            shuffle=False)
+
+
 def main():
-    data = DatasetLightning()
+    data = ModelNetDatasetLightning()
     checkpoint = ModelCheckpoint(
-        monitor="val/total_loss",
-        filename="log/lightning/pcrnet-{epoch:02d}",
+        monitor="valid/total_loss",
+        filename="modelnet/pcrnet-{epoch:02d}",
         save_top_k=3,
         mode="min")
 
     model = PCRNetLightning(input_shape="bnc")
 
-    trainer = Trainer(gpus=1, max_epochs=100, callbacks=[checkpoint])
+    trainer = Trainer(gpus=1, max_epochs=500, callbacks=[checkpoint])
 
     trainer.fit(model, data)
 
