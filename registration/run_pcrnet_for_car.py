@@ -4,7 +4,7 @@ import open3d as o3d
 
 from models import pcrnet
 from src.qdataset import QuaternionTransform
-from torch2open3d import tensor2pc
+from src.torch2open3d import tensor2pc
 import torchvision
 
 from data.modelnet_loader_torch import ModelNetCls

@@ -22,8 +22,8 @@ class QuaternionTransform:
 
     # Dict constructor
     @staticmethod
-    def from_dict(d, device):
-        return QuaternionTransform(d["vec"].to(device), d["inversion"][0].item())
+    def from_dict(d):
+        return QuaternionTransform(d["vec"], d["inversion"][0])
 
     # Inverse Constructor
     def inverse(self):

@@ -667,12 +667,12 @@ def get_protein_datasets(args):
         traindata = DudEDataset(
             json_path="data/protein/dud.json",
             ply_path="data/protein/ply",
-            transforms=transforms
+            does_transforms=True
         )
         testdata = DudEDataset(
             json_path="data/protein/dud.json",
             ply_path="data/protein/ply",
-            transforms=transforms
+            does_transforms=True
         )
         train_repeats = max(int(5000 / len(traindata)), 1)
 
@@ -682,7 +682,7 @@ def get_protein_datasets(args):
         testdata = DudEDataset(
             json_path="data/protein/dud.json",
             ply_path="data/protein/ply",
-            transforms=transforms,
+            does_transforms=True,
             include_shape=True
         )
         trainset = None

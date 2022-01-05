@@ -161,7 +161,7 @@ class QuaternionFixedTwoDataset(torch.utils.data.Dataset):
         if self.include_shapes:
             p0, p1, shape = self.data[index % self.len_data]  # p0: source, p1: target
         else:
-            p0, p1, _ = self.data[index % self.len_data]
+            p0, p1 = self.data[index % self.len_data]
         gt = self.transforms[index]
         p1 = gt.rotate(p1)
         if self.apply_noise:

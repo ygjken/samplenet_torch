@@ -6,6 +6,7 @@ import sys
 import numpy as np
 from pytorch_lightning import callbacks
 import torch
+from torch.utils import data
 import torchvision
 from tqdm import tqdm
 from pytorch_lightning import LightningModule, LightningDataModule, Trainer
@@ -25,8 +26,9 @@ from src.qdataset_for_two import QuaternionFixedTwoDataset
 
 
 class PCRNetLightning(LightningModule):
-    def __init__(self, bottleneck_size=1024, input_shape="bcn") -> None:
+    def __init__(self, bottleneck_size=1024, input_shape="bnc") -> None:
         super().__init__()
+        self.input_shape = input_shape
         self.model = PCRNet(bottleneck_size, input_shape)
         self.loss_func = self.compute_loss
 
@@ -178,7 +180,7 @@ class ModelNetDatasetLightning(LightningDataModule):
             shuffle=False)
 
 
-def main():
+def train_modelnet():
     data = ModelNetDatasetLightning()
     checkpoint = ModelCheckpoint(
         monitor="valid/total_loss",
@@ -188,10 +190,27 @@ def main():
 
     model = PCRNetLightning(input_shape="bnc")
 
-    trainer = Trainer(gpus=1, max_epochs=500, callbacks=[checkpoint])
+    trainer = Trainer(gpus=1, max_epochs=250, callbacks=[checkpoint])
 
     trainer.fit(model, data)
 
 
+def fine_turning():
+    model = PCRNetLightning(input_shape="bnc")
+
+    pretrain_checkpoint_path = "lightning_logs/version_10/checkpoints/modelnet/pcrnet-epoch=498.ckpt"
+    model = model.load_from_checkpoint(pretrain_checkpoint_path)
+
+    data = DudEDatasetLightning()
+    checkpoint = ModelCheckpoint(
+        monitor="valid/total_loss",
+        filename="modelnet/protein-pcrnet-{epoch:02d}",
+        save_top_k=3,
+        mode="min")
+
+    trainer = Trainer(gpus=1, max_epochs=50, callbacks=[checkpoint])
+    trainer.fit(model, data)
+
+
 if __name__ == "__main__":
-    main()
+    train_modelnet()
