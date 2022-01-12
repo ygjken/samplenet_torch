@@ -8,14 +8,14 @@ import torch
 import torchvision
 from tqdm import tqdm
 
-from data.modelnet_loader_torch import ModelNetCls
+from data.modelnet_dataset import ModelNetCls
 from models import pcrnet
 from src import ChamferDistance, FPSSampler, RandomSampler, SampleNet
 from src import sputils
 from src.pctransforms import OnUnitCube, PointcloudToTensor
 from src.qdataset import QuaternionFixedDataset, QuaternionTransform, rad_to_deg
 
-from data.protein_loader_torch import DudEDataset
+from data.dude_dataset import DudEDataset
 from src.qdataset_for_two import QuaternionFixedTwoDataset
 from torch.utils.tensorboard import SummaryWriter
 WRITER = SummaryWriter()

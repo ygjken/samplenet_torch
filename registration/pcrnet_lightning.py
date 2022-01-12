@@ -14,14 +14,14 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from main import train
 
 from models.pcrnet import PCRNet
-from data.modelnet_loader_torch import ModelNetCls
+from data.modelnet_dataset import ModelNetCls
 from models import pcrnet
 from src import ChamferDistance, FPSSampler, RandomSampler, SampleNet
 from src import sputils
 from src.pctransforms import OnUnitCube, PointcloudToTensor
 from src.qdataset import QuaternionFixedDataset, QuaternionTransform, rad_to_deg
 
-from data.protein_loader_torch import DudEDataset
+from data.dude_dataset import DudEDataset
 from src.qdataset_for_two import QuaternionFixedTwoDataset
 
 
@@ -208,9 +208,9 @@ def fine_turning():
         save_top_k=3,
         mode="min")
 
-    trainer = Trainer(gpus=1, max_epochs=50, callbacks=[checkpoint])
+    trainer = Trainer(gpus=1, max_epochs=200, callbacks=[checkpoint])
     trainer.fit(model, data)
 
 
 if __name__ == "__main__":
-    train_modelnet()
+    fine_turning()

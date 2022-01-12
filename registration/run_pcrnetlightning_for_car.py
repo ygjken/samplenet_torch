@@ -5,7 +5,7 @@ import open3d as o3d
 import os
 
 from pcrnet_lightning import PCRNetLightning
-from data.modelnet_loader_torch import ModelNetCls
+from data.modelnet_dataset import ModelNetCls
 from src.qdataset import QuaternionTransform
 from src.qdataset import QuaternionFixedDataset
 from src.pctransforms import OnUnitCube, PointcloudToTensor

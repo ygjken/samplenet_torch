@@ -6,7 +6,7 @@ import torchvision
 from src.pctransforms_for_two import OnUnitCubeForTwo, PointcloudToTensorForTwo, TransformsForTwo
 
 from models import pcrnet
-from data.protein_loader_torch import DudEDataset
+from data.dude_dataset import DudEDataset
 from src.qdataset_for_two import QuaternionFixedTwoDataset, QuaternionTransform
 from src.torch2open3d import tensor2pc
 
