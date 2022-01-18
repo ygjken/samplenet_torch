@@ -1,22 +1,41 @@
 import torch
 from torch.utils.data import DataLoader
 import open3d as o3d
+import torchvision
+# from src.pctransforms import OnUnitCube, PointcloudToTensor
+from src.pctransforms_for_two import OnUnitCubeForTwo, PointcloudToTensorForTwo, TransformsForTwo
 
 from models import pcrnet
-from src.protein_dataset import DudEDataset
-from src.qdataset import QuaternionTransform
-from torch2open3d import tensor2pc
+from data.dude_dataset import DudEDataset
+from src.qdataset_for_two import QuaternionFixedTwoDataset, QuaternionTransform
+from src.torch2open3d import tensor2pc
 
 
 model = pcrnet.PCRNet(input_shape="bnc")
-model.load_state_dict(torch.load('log/baseline/PCRNet1024_model_best.pth', map_location="cpu"))
+model.load_state_dict(
+    torch.load('log/baseline/PCRNet1024_model_best.pth', map_location="cpu")
+)
 model.eval()
 
-dataset = DudEDataset(json_path='data/protein/dud.json', ply_path='data/protein/ply', transforms=None)
-dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
+testdata = DudEDataset(json_path='data/protein/dud.json',
+                       ply_path='data/protein/ply',
+                       does_transforms=True,
+                       include_shape=True,)
+rotated_dataset = QuaternionFixedTwoDataset(
+    testdata,
+    repeat=1,
+    seed=1,
+    include_shapes=True
+)
+dataloader = DataLoader(rotated_dataset, batch_size=1, shuffle=False)
 
 i = 0
-for ligand, pocket in dataloader:
+for data_and_shape in dataloader:
+    data = data_and_shape[0:3]
+    shape = data_and_shape[3]
+
+    ligand, pocket, igt = data
+
     twist, _ = model(ligand.float(), pocket.float())
 
     est_transform = QuaternionTransform(twist)
@@ -32,9 +51,7 @@ for ligand, pocket in dataloader:
     q = source + target
     a = est + target
 
-    o3d.io.write_point_cloud('log/pc/q.ply', q)
-    o3d.io.write_point_cloud('log/pc/a.ply', a)
+    o3d.io.write_point_cloud(f'log/protein_visible/{i}_ques.ply', q)
+    o3d.io.write_point_cloud(f'log/protein_visible/{i}_ans.ply', a)
 
-    if i == 0:
-        break
     i += 1

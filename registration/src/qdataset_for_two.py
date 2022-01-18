@@ -131,9 +131,10 @@ def create_random_transform(dtype, max_rotation_deg, max_translation):
 
 
 class QuaternionFixedTwoDataset(torch.utils.data.Dataset):
-    def __init__(self, data, repeat=1, seed=0, apply_noise=False, fixed_noise=False):
+    def __init__(self, data, repeat=1, seed=0, apply_noise=False, fixed_noise=False, include_shapes=False):
         super().__init__()
         self.data = data
+        self.include_shapes = include_shapes
         self.len_data = len(data)
         self.len_set = len(data) * repeat
 
@@ -157,7 +158,10 @@ class QuaternionFixedTwoDataset(torch.utils.data.Dataset):
         return self.len_set
 
     def __getitem__(self, index):
-        p0, p1 = self.data[index % self.len_data]  # p0: source, p1: target
+        if self.include_shapes:
+            p0, p1, shape = self.data[index % self.len_data]  # p0: source, p1: target
+        else:
+            p0, p1 = self.data[index % self.len_data]
         gt = self.transforms[index]
         p1 = gt.rotate(p1)
         if self.apply_noise:
@@ -168,6 +172,9 @@ class QuaternionFixedTwoDataset(torch.utils.data.Dataset):
             p1 = p1 + noise
 
         igt = gt.as_dict()  # p0 ---> p1
+
+        if self.include_shapes:
+            return p0, p1, igt, shape
 
         return p0, p1, igt
 

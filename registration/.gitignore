@@ -1,0 +1,6 @@
+data/protein
+runs
+log.log
+Pointnet2_PyTorch/
+lightning_logs
+pc_logs
